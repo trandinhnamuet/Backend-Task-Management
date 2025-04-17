@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "uCIK3zSHJ1bnGDWNKIrKX5w4SZlGAWP+cZHu4U7Jrao=",
+  "Source": "BackendTaskManagement",
+  "BasePath": "_content/BackendTaskManagement",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
