@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskManagementBackend.Data;
 using TaskManagementBackend.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -27,6 +28,32 @@ public class TaskController : ControllerBase
         if (task == null)
             return NotFound();
         return task;
+    }
+
+    [HttpGet("filter")]
+    public async Task<ActionResult<IEnumerable<TaskManagementBackend.Models.Task>>> FilterTasks(int? userId = null, int? showroomId = null)
+    {
+        // Gán giá trị mặc định là 0 nếu userId hoặc showroomId là null
+        int userIdValue = userId ?? 0;
+        int showroomIdValue = showroomId ?? 0;
+
+        // Truy vấn SQL thuần
+        var tasks = await _context.Tasks
+            .FromSqlRaw(@"
+                SELECT DISTINCT Tasks.*
+                FROM Tasks
+                LEFT JOIN UserTask ON Tasks.TaskID = UserTask.TaskID
+                LEFT JOIN UserShowroom ON UserTask.UserID = UserShowroom.UserID
+                WHERE (@userId = 0 OR UserTask.UserID = @userId)
+                  AND (@showroomId = 0 OR UserShowroom.ShowroomID = @showroomId)",
+                new SqlParameter("@userId", userIdValue),
+                new SqlParameter("@showroomId", showroomIdValue))
+            .ToListAsync();
+
+        if (!tasks.Any())
+            return NotFound("Không tìm thấy task nào khớp với tiêu chí.");
+
+        return tasks;
     }
 
     [HttpPost]
