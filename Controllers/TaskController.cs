@@ -50,9 +50,6 @@ public class TaskController : ControllerBase
                 new SqlParameter("@showroomId", showroomIdValue))
             .ToListAsync();
 
-        if (!tasks.Any())
-            return NotFound("Không tìm thấy task nào khớp với tiêu chí.");
-
         return tasks;
     }
 
