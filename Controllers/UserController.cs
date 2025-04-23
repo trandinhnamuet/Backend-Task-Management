@@ -33,6 +33,8 @@ public class UserController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<User>> CreateUser(User user)
     {
+        //Add UserRole for new user
+        //Check exited user
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, user);

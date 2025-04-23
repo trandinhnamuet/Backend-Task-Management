@@ -61,6 +61,40 @@ public class TaskController : ControllerBase
         return CreatedAtAction(nameof(GetTask), new { id = task.TaskID }, task);
     }
 
+    public class TaskWithUser
+    {
+        public TaskManagementBackend.Models.Task Task { get; set; } = null!;
+        public int UserId { get; set; }
+    }
+
+
+    [HttpPost("create-with-user")]
+    public async Task<IActionResult> CreateTaskWithUser([FromBody] TaskWithUser request)
+    {
+        if (request.Task == null || request.UserId <= 0)
+            return BadRequest("Thông tin không hợp lệ");
+
+        // 1. Tạo task mới
+        _context.Tasks.Add(request.Task);
+        await _context.SaveChangesAsync();
+
+        // 2. Lấy TaskID vừa tạo
+        int newTaskId = request.Task.TaskID;
+
+        // 3. Thêm vào bảng UserTask bằng SQL
+        var sql = @"
+        INSERT INTO UserTask (UserID, TaskID)
+        VALUES (@userId, @taskId)";
+
+        await _context.Database.ExecuteSqlRawAsync(sql,
+            new SqlParameter("@userId", request.UserId),
+            new SqlParameter("@taskId", newTaskId));
+
+        // 4. Trả về kết quả
+        return CreatedAtAction(nameof(GetTask), new { id = newTaskId }, request.Task);
+    }
+
+
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTask(int id, TaskManagementBackend.Models.Task task)
     {
@@ -79,6 +113,10 @@ public class TaskController : ControllerBase
         if (task == null)
             return NotFound();
 
+        // Xóa các bản ghi trong UserTask liên quan đến TaskID bằng SQL thuần
+        await _context.Database.ExecuteSqlRawAsync("DELETE FROM UserTask WHERE TaskID = {0}", id);
+
+        // Xóa bản ghi trong Tasks
         _context.Tasks.Remove(task);
         await _context.SaveChangesAsync();
         return NoContent();
