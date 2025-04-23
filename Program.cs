@@ -21,6 +21,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 Console.WriteLine("http://localhost:5283/swagger\nhttp://localhost:5283/swagger");
+builder.WebHost.UseUrls("http://0.0.0.0:5283");
 
 var app = builder.Build();
 // Sử dụng CORS
