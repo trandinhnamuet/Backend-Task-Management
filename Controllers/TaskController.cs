@@ -53,6 +53,102 @@ public class TaskController : ControllerBase
         return tasks;
     }
 
+    [HttpGet("by-role/{userId}")]
+public async Task<ActionResult<IEnumerable<UserTasksDto>>> GetTasksByRole(int userId)
+{
+    // 1. Lấy RoleName của user dựa trên userId
+    var roleName = await _context.Database
+        .SqlQueryRaw<string>(
+            @"SELECT Roles.RoleName AS Value 
+              FROM Users 
+              JOIN UserRole ON Users.UserID = UserRole.UserID 
+              JOIN Roles ON UserRole.RoleID = Roles.RoleID 
+              WHERE Users.UserID = @userId",
+            new SqlParameter("@userId", userId))
+        .FirstOrDefaultAsync();
+
+    if (string.IsNullOrEmpty(roleName))
+        return NotFound("Không tìm thấy người dùng hoặc vai trò");
+
+    // 2. Lấy danh sách user và task dựa trên RoleName
+    if (roleName == "CEO")
+    {
+        // CEO: Lấy tất cả user khác và task của họ
+        var userTasks = await _context.Users
+            .FromSqlRaw(
+                @"SELECT DISTINCT Users.* 
+                  FROM Users 
+                  JOIN UserTask ON Users.UserID = UserTask.UserID 
+                  WHERE Users.UserID != @userId",
+                new SqlParameter("@userId", userId))
+            .ToListAsync();
+
+        var result = new List<UserTasksDto>();
+        foreach (var user in userTasks)
+        {
+            var tasks = await _context.Tasks
+                .FromSqlRaw(
+                    @"SELECT Tasks.* 
+                      FROM Tasks 
+                      JOIN UserTask ON Tasks.TaskID = UserTask.TaskID 
+                      WHERE UserTask.UserID = @userId",
+                    new SqlParameter("@userId", user.UserID))
+                .ToListAsync();
+
+            result.Add(new UserTasksDto
+            {
+                UserID = user.UserID,
+                UserName = user.UserName,
+                FullName = user.FullName,
+                Tasks = tasks
+            });
+        }
+
+        return result;
+    }
+    else if (roleName == "Boss")
+    {
+        // Boss: Lấy user có vai trò Accountant và SaleAgent, cùng task của họ
+        var userTasks = await _context.Users
+            .FromSqlRaw(
+                @"SELECT DISTINCT Users.* 
+                  FROM Users 
+                  JOIN UserTask ON Users.UserID = UserTask.UserID 
+                  JOIN UserRole ON Users.UserID = UserRole.UserID 
+                  JOIN Roles ON UserRole.RoleID = Roles.RoleID 
+                  WHERE Roles.RoleName IN ('Accountant', 'SaleAgent')",
+                new SqlParameter("@userId", userId))
+            .ToListAsync();
+
+        var result = new List<UserTasksDto>();
+        foreach (var user in userTasks)
+        {
+            var tasks = await _context.Tasks
+                .FromSqlRaw(
+                    @"SELECT Tasks.* 
+                      FROM Tasks 
+                      JOIN UserTask ON Tasks.TaskID = UserTask.TaskID 
+                      WHERE UserTask.UserID = @userId",
+                    new SqlParameter("@userId", user.UserID))
+                .ToListAsync();
+
+            result.Add(new UserTasksDto
+            {
+                UserID = user.UserID,
+                UserName = user.UserName,
+                FullName = user.FullName,
+                Tasks = tasks
+            });
+        }
+
+        return result;
+    }
+    else
+    {
+        return new List<UserTasksDto>();
+    }
+}
+
     [HttpPost]
     public async Task<ActionResult<TaskManagementBackend.Models.Task>> CreateTask(TaskManagementBackend.Models.Task task)
     {
